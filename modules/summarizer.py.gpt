@@ -1,0 +1,43 @@
+# modules/summarizer.py
+import os
+import google.generativeai as palm
+
+# 설정 및 API 키 로드
+palm.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+MODEL = os.getenv("GEMINI_MODEL", "models/gemini-pro")
+
+# 프롬프트 파일 로드 함수
+def load_prompt(filename: str) -> str:
+    base = os.path.dirname(__file__)
+    path = os.path.join(base, "..", "prompts", filename)
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+# 프롬프트 템플릿 사전 로드
+_CHUNK_TMPL = load_prompt("chunk_summary.txt")
+
+# 1단계: 키워드별 문서 단위 요약 노드
+def chunk_summarizer_node(state: dict) -> dict:
+    """
+    입력: {"by_keyword":[{"keyword":..., "docs":[{title, link, published, author, content}, ...]}]}
+    출력: {"keyword_summaries":[
+                {"keyword":..., "summaries":[{"title", "link", "published", "author", "summary"}, ...]}
+            ]}
+    """
+    result = []
+    for entry in state.get("by_keyword", []):
+        kw = entry.get("keyword", "")
+        summaries = []
+        for doc in entry.get("docs", []):
+            # 문서 전체를 한번에 요약
+            prompt = _CHUNK_TMPL.replace("{text}", doc.get("content", ""))
+            resp = palm.generate_text(model=MODEL, prompt=prompt, temperature=0.7)
+            summaries.append({
+                "title": doc.get("title", ""),
+                "link": doc.get("link", ""),
+                "published": doc.get("published", ""),
+                "author": doc.get("author", ""),
+                "summary": resp.result
+            })
+        result.append({"keyword": kw, "summaries": summaries})
+    return {"user_id": state.get("user_id", ""), "keyword_summaries": result}

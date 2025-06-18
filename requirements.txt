@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+langchain
+langgraph
+faiss-cpu
+sentence-transformers
+google-generativeai
+python-dotenv
+pyngrok
+nest_asyncio
+transformers
+google-cloud-aiplatform
+langchain-google
+langchain-community
+langchain-google-vertexai
